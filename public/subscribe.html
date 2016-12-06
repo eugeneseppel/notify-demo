@@ -1,0 +1,143 @@
+<head>
+  <script src="js/jquery.min.js"></script>
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId: "681728241990925",
+        xfbml: true,
+        cookie: true,
+        version: "v2.8"
+      });
+
+      FB.Event.subscribe('send_to_messenger', function(e) {
+        console.log("Plug-in reported event: " + e.event);
+        console.log("Ref: " + e.ref);
+      });
+
+    };
+  </script>
+  <script>
+  function getQueryVariable(variable) {
+    var query = window.location.search.substring(1);
+    var vars = query.split('&');
+    for (var i = 0; i < vars.length; i++) {
+      var pair = vars[i].split('=');
+      if (decodeURIComponent(pair[0]) == variable) {
+        return decodeURIComponent(pair[1]);
+      }
+    }
+    console.log('Query variable %s not found', variable);
+  }
+
+  var identity = getQueryVariable("username");
+
+  function submit(){
+    $('#result').html("");
+    var preferred = $('input[name=preferred]:checked').attr('value');
+    var marketingEnabled = $('#marketing').is(':checked');
+    var number = $('#number').val();
+    $.post( "/subscribe", {
+      identity: identity,
+      preferred: preferred,
+      marketingEnabled: marketingEnabled,
+      number: number
+    }, function( data, status ) {
+      console.log (status);
+      console.log (data);
+      $('#result').html(data.message);
+    });
+  }
+
+  function generateFBMPlugin(){
+    var fbmButton = document.createElement("div");
+    fbmButton.setAttribute("id","messenger-button");
+    fbmButton.setAttribute("class","fb-send-to-messenger");
+    fbmButton.setAttribute("messenger_app_id","681728241990925");
+    fbmButton.setAttribute("page_id","741424162662907");
+    fbmButton.setAttribute("color","blue");
+    fbmButton.setAttribute("size","standard");
+    fbmButton.setAttribute("ref",identity);
+    $("#fbmRegistered").append(fbmButton);
+  }
+  </script>
+
+  <script>
+
+  $.get( "/bindings", {
+    Identity: identity
+  }, function( data, status ) {
+    $("#apnRegistered").html("Not registered");
+    var fbmReg = false;
+    data.forEach(function (binding){
+      switch(binding.bindingType){
+        case 'apn':
+        $("#apnRegistered").html("Registered");
+        break;
+        case 'sms':
+        $("#number").val(binding.address);
+        break;
+        case 'facebook-messenger':
+        $("#fbmRegistered").html("Registered");
+        fbmReg = true;
+        break;
+      }
+      if (binding.tags.indexOf("preferred") >=0){
+        document.getElementById(binding.bindingType).setAttribute("checked","true");
+      }
+      if (binding.tags.indexOf("marketingEnabled") >=0){
+        document.getElementById("marketing").setAttribute("checked","true");
+      }
+    });
+    if (fbmReg){
+    } else {
+      generateFBMPlugin();
+      (function(d, s, id){
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) { return; }
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    }
+  });
+  </script>
+</head>
+
+<body>
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Channel</th>
+        <th>Status</th>
+        <th>Preferred</th>
+      </tr>
+    </thead>
+    <tr>
+      <td>iOS app: </td>
+      <td id="apnRegistered"></td>
+      <td><input type="radio" name="preferred" id="apn" value="apn"></td>
+    </tr>
+    <tr>
+      <td>Messenger:</td>
+      <td id="fbmRegistered"></td>
+      </td>
+      <td><input type="radio" name="preferred" id="facebook-messenger" value="facebook-messenger"></td>
+    </tr>
+    <tr>
+      <td>SMS: </td>
+      <td><input type="text" id="number" value="e.g. +1 555 555 5555"></td>
+      <td><input type="radio" name="preferred" id="sms" value="sms"></td>
+    </tr>
+    <tr>
+      <td>I want to receive offers: </td>
+      <td><input type="checkbox" id="marketing"></td>
+    <tr>
+      <td><button onClick=submit()>Submit</button></td>
+    </tr>
+  </table>
+  <p id="result"></p>
+
+
+
+</body>
